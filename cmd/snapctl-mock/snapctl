@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+
+case "$1-$2" in
+
+  "get-ssh")
+    echo '{"username":"someone", "password":"apassword" }'
+    ;;
+
+  "get-git.url")
+    echo -n "https://github.com/ryanjyoder/snapsible.git"
+    ;;
+
+  *)
+    echo "invalid config"
+    exit 1
+    ;;
+esac
