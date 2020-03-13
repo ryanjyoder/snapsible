@@ -1,29 +1,52 @@
 #!/usr/bin/env sh
 
+## Enable Debugging ##
 if [ ! -z "$DEBUG" ]
 then
     set -o xtrace
 fi
 
+## Check user is root ##
 if ! [ $(id -u) = 0 ]; then
    echo "Setup needs to be run as root."
    exit 1
 fi
 
+## Validate Environment Variables ##
 if [ -z "$CONFIG_DIR" ]
 then
       echo "\$CONFIG_DIR must be set"
       exit 1
 fi
 
+## Create Private Key ##
 mkdir -p "$CONFIG_DIR"
 mkdir -p $HOME/.ssh
-
-
 ssh_private_key="$DATA_DIR/.ssh/id_rsa"
 if [ ! -f "$ssh_private_key" ]
 then
     ssh-keygen -t rsa -f $ssh_private_key -q -N ""
+fi
+
+## Update Known_hosts ##
+new_known_hosts_file=/tmp/known_hosts
+current_known_hosts_file=$DATA_DIR/.ssh/known_hosts
+if [ ! -f "$current_known_hosts_file" ]
+then
+    touch $current_known_hosts_file
+    chmod 600 $current_known_hosts_file
+fi
+cp $current_known_hosts_file $new_known_hosts_file
+ssh-keyscan -H localhost 2>/dev/null >> $new_known_hosts_file
+current_hash=`sort $current_known_hosts_file | uniq | md5sum`
+new_hash=`sort $new_known_hosts_file | uniq | md5sum`
+if [ "$new_hash" == "$current_hash" ]
+then
+    # Nothing changed. Just delete the file
+    rm $new_known_hosts_file
+else
+    # Something has changed. Replace the old file
+    mv $new_known_hosts_file $current_known_hosts_file
 fi
 
 ssh_username_file="$CONFIG_DIR/ssh_username"
@@ -40,7 +63,7 @@ echo "Connecting with username: $ssh_username."
 echo "If this is incorrect delete this file an run the setup again: $ssh_username_file"
 echo
 
-ssh -i "$ssh_private_key" -q -o 'StrictHostKeyChecking=yes' -o BatchMode=yes -f $ssh_username@localhost exit
+ssh -i "$ssh_private_key" -q -o BatchMode=yes -f $ssh_username@localhost exit
 ssh_exit_status=$?
 
 if [ "$ssh_exit_status" -ne "0" ]
