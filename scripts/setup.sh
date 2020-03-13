@@ -1,25 +1,90 @@
 #!/usr/bin/env sh
 
+###############
+## CONSTANTS ##
+###############
+usage='(cd ~/.ssh/ && echo id_rsa.pub | cpio -oaV ) | ssh <username>@<host> sudo snapsible.setup'
+
+
+######################
 ## Enable Debugging ##
+######################
 if [ ! -z "$DEBUG" ]
 then
     set -o xtrace
 fi
 
+
+
+
+########################
 ## Check user is root ##
-if ! [ $(id -u) = 0 ]; then
-   echo "Setup needs to be run as root."
-   exit 1
+########################
+if [ $(id -u) != 0 ]; then
+    echo "This this script should be run as root."
+    exit 1
 fi
 
-## Validate Environment Variables ##
-if [ -z "$CONFIG_DIR" ]
+
+
+
+##########################
+## Non-interactive mode ##
+##########################
+if [ -t 0 ]; then
+    echo "Usage:"
+    echo "\t$usage"
+    exit 1
+fi
+
+#####################
+## Import ssh keys ##
+#####################
+# This script expects the ssh keys to be piped to it.
+temp_keys_dir=/tmp/temp_keys
+rm -rf $temp_keys_dir
+mkdir -p $temp_keys_dir
+cur_umask=`umask` # save current umask to reset it later
+umask 027
+(cd $temp_keys_dir && cpio -imVd )
+umask $cur_umask 
+# Verify the keys were supplied. We're looking for files thatend in .pub. They should have only provided one, but there's more than one just take the first one.
+temp_public_key_path=`ls -1 $temp_keys_dir/*.pub 2>/dev/null | head -n 1` 
+if [ -z "$temp_public_key_path" ]
 then
-      echo "\$CONFIG_DIR must be set"
-      exit 1
+    echo
+    echo "ERROR: No public keys were found in the provide tar."
+    echo 
+    echo "Usage:"
+    echo "\t$usage"
+    exit 1
 fi
+temp_private_key_path=`echo $temp_public_key_path|sed 's/.pub$//'`
 
+
+####################################
+## Validate Environment Variables ##
+####################################
+# Before starting we are going to override the ssh username
+SSH_USERNAME=`logname`
+required_envs="CONFIG_DIR:$CONFIG_DIR DATA_DIR:$DATA_DIR SSH_USERNAME:$SSH_USERNAME SSH_USERNAME_FILE:$SSH_USERNAME_FILE " 
+for var in ${required_envs} ; do
+    key=${var%%:*}
+    value=${var#*:}
+    if [ -z "$value" ]
+    then
+        echo "$key must be set"
+        exit 1
+    fi
+done
+mkdir -p $CONFIG_DIR
+mkdir -p $DATA_DIR/.ssh
+
+
+
+########################
 ## Create Private Key ##
+########################
 mkdir -p "$CONFIG_DIR"
 mkdir -p $HOME/.ssh
 ssh_private_key="$DATA_DIR/.ssh/id_rsa"
@@ -28,7 +93,10 @@ then
     ssh-keygen -t rsa -f $ssh_private_key -q -N ""
 fi
 
+
+########################
 ## Update Known_hosts ##
+########################
 new_known_hosts_file=/tmp/known_hosts
 current_known_hosts_file=$DATA_DIR/.ssh/known_hosts
 if [ ! -f "$current_known_hosts_file" ]
@@ -40,7 +108,7 @@ cp $current_known_hosts_file $new_known_hosts_file
 ssh-keyscan -H localhost 2>/dev/null >> $new_known_hosts_file
 current_hash=`sort $current_known_hosts_file | uniq | md5sum`
 new_hash=`sort $new_known_hosts_file | uniq | md5sum`
-if [ "$new_hash" == "$current_hash" ]
+if [ "$new_hash" = "$current_hash" ]
 then
     # Nothing changed. Just delete the file
     rm $new_known_hosts_file
@@ -49,79 +117,44 @@ else
     mv $new_known_hosts_file $current_known_hosts_file
 fi
 
-ssh_username_file="$CONFIG_DIR/ssh_username"
-ssh_username=$SSH_USERNAME
-if [ -z "$ssh_username" ]
-then
-    echo -n "Which user should be used to manage this device? (It must have ssh access): "
-    read ssh_username
-    echo -n "$ssh_username" > "$ssh_username_file"
-fi
 
-echo
-echo "Connecting with username: $ssh_username."
-echo "If this is incorrect delete this file an run the setup again: $ssh_username_file"
-echo
 
-ssh -i "$ssh_private_key" -q -o BatchMode=yes -f $ssh_username@localhost exit
+
+
+
+##############################
+## Save SSH username config ##
+##############################
+echo -n "$SSH_USERNAME" > "$SSH_USERNAME_FILE"
+
+
+
+
+########################
+## Set SSH Connection ##
+########################
+# We want to make sure that ansible can connect with our private key without being prompted. If we cannot connect with ssh, then we neet to do the setup.
+ssh -i "$ssh_private_key" -q -o BatchMode=yes -f $SSH_USERNAME@localhost exit
 ssh_exit_status=$?
-
 if [ "$ssh_exit_status" -ne "0" ]
 then
-    ssh_identity_option=""
-    if [ -z "$EXISTING_SSH_KEY" ]
-    then
-        echo "No private key is set. Using password."
-        echo "If you need to use a ssh key to connect to this device, do the following:"
-        echo "\t1) Copy your ssh keys (id_rsa, id_rsa.pub) into $DATA_DIR."
-        echo "\t1) Set the private key in the config: snap set snapsible existing-private-key=<$DATA_DIR/id_rsa "
-        ssh_identity_option="$ssh_private_key"
-    else
-        echo "Using the ssh key provided: $EXISTING_SSH_KEY"
-        ssh_identity_option="$EXISTING_SSH_KEY"
-        chmod 600 $EXISTING_SSH_KEY
-    fi
-    #-o UserKnownHostsFile\ $ssh_known_hosts_file
-    ssh-copy-id -i "$ssh_private_key" -f -oIdentityFile\ $ssh_identity_option "$ssh_username@localhost"
+    # The ssh connection failed. Let's set up the connection.
+    ssh-copy-id -i "$ssh_private_key" -f -oIdentityFile\ $temp_private_key_path "$SSH_USERNAME@localhost"
 fi
+# We are not finished with these keys. Delete them so they aren't laying around.
+rm -rf $temp_keys_dir
 
 
-ssh -i "$ssh_private_key" -f $ssh_username@localhost exit
+
+##########################
+## Confirm Setup worked ## 
+##########################
+ssh -i "$ssh_private_key" -f $SSH_USERNAME@localhost exit
 ssh_exit_status=$?
-
 if [ "$ssh_exit_status" -eq "0" ]
 then
     echo "ssh setup success ✓"
-    rm -f "$EXISTING_SSH_KEY" "$EXISTING_SSH_KEY.pub"
 else
     echo "ssh connection setup failed."
-    exit 1
-fi
-
-git_url_file="$CONFIG_DIR/git_url"
-git_url="$GIT_URL"
-if [ -z "$git_url" ]
-then
-    echo -n "git url to configure device: "
-    read git_url
-    echo -n "$git_url" > "$git_url_file"
-fi
-
-cd /tmp
-git ls-remote -h  $git_url 2>/dev/null >/dev/null
-git_exit_status=$?
-
-echo
-echo "Using git repo: $git_url."
-echo "If this is incorrect delete this file an run the setup again: $git_url_file"
-echo
-
-if [ "$git_exit_status" -eq "0" ]
-then
-    echo "git setup success ✓"
-else
-    echo "Could not connect to the git repo"
-    echo -n 'Considering adding this ssh key to the repo'\''s "deploy keys":\n\n\t'
-    cat "$ssh_private_key.pub"
     exit 1
 fi

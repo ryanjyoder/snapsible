@@ -38,9 +38,15 @@ parts:
   scripts:
     plugin: dump
     source: scripts/
-    stage-packages: [ssh-client, git-core ]
+    stage-packages: [ssh-client, git-core, cpio ]
     organize:
       '*.sh' : bin/
+
+  logname:
+    plugin: nil
+    stage-packages: [coreutils]
+    stage:
+      - 'usr/bin/logname'
 
   ansible:
     plugin: python

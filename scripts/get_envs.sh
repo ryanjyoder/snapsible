@@ -13,14 +13,9 @@ export DATA_DIR=$SNAP_DATA
 export CONFIG_DIR=$SNAP_DATA/config
 export HOME=$SNAP_DATA
 
-export EXISTING_SSH_KEY=`snapctl get existing-private-key`
 
-git_url_file=$CONFIG_DIR/git_url
-export GIT_URL=`[ -f $git_url_file ] && cat $git_url_file`
-
-
-ssh_username_file="$CONFIG_DIR/ssh_username"
-export SSH_USERNAME=`[ -f $ssh_username_file ] && cat $ssh_username_file`
+export SSH_USERNAME_FILE="$CONFIG_DIR/ssh_username"
+export SSH_USERNAME=`[ -f $SSH_USERNAME_FILE ] && cat $SSH_USERNAME_FILE`
 
 export DEBUG=`snapctl get debug`
 
