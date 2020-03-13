@@ -1,0 +1,62 @@
+name: snapsible
+base: core18
+version: '0.1'
+summary: An Ansible Pull like experience as a snap
+description: |
+  Snapsible allows you to configure your device using Ansible and playbooks stored in a git repository. 
+
+assumes: ["command-chain"]
+grade: devel 
+confinement: strict 
+
+layout:
+  /root:
+    bind: $SNAP_DATA
+
+
+apps:
+  snapsible: 
+    command: snapsible.sh
+    #environment:
+    #  ANSIBLE_CONFIG: $SNAP_DATA/ansible.cfg
+    #  DEFAULT_LOCAL_TMP: $SNAP_DATA/tmp
+    plugs: [network, network-bind]
+    command-chain: 
+      - 'bin/get_envs.sh'
+    environment:
+      GIT_EXEC_PATH: $SNAP/usr/lib/git-core
+
+  setup:
+    command: setup.sh
+    command-chain: 
+      - 'bin/get_envs.sh'
+    plugs: [network]
+    environment:
+      GIT_EXEC_PATH: $SNAP/usr/lib/git-core
+
+parts:
+  scripts:
+    plugin: dump
+    source: scripts/
+    stage-packages: [ssh-client, git-core ]
+    organize:
+      '*.sh' : bin/
+
+  ansible:
+    plugin: python
+    source: https://github.com/ansible/ansible.git
+    source-branch: devel
+    stage-packages: [git, ssh-client]
+    build-packages: [build-essential, libssl-dev, python-dev, libffi-dev]
+
+  snapcraft-preload:
+    source: https://github.com/sergiusens/snapcraft-preload.git
+    plugin: cmake
+    stage-packages:
+      - try:
+        - lib32gcc1
+        - lib32stdc++6
+        - libc6-i386
+    build-packages:
+      - gcc-multilib
+      - g++-multilib

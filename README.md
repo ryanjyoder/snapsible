@@ -1,2 +1,2 @@
 # snapsible
-An Ansible Pull like experice packaged as a snap
+An Ansible Pull like experience packaged as a snap
