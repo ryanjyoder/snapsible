@@ -116,7 +116,7 @@ fi
 device_id=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 secret=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 temp_secret_file="$SECRET_CODE_FILE.tmp"
-touch temp_secret_file
+touch $temp_secret_file
 chmod 600 $temp_secret_file
 if [ "$?" != "0"]
 then
@@ -133,3 +133,4 @@ echo $secret_json | base64 -w 0
 echo
 echo
 
+snapctl start snapsible

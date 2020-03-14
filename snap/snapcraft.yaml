@@ -17,6 +17,7 @@ layout:
 apps:
   snapsible: 
     command: snapsible.sh
+    daemon: simple
     #environment:
     #  ANSIBLE_CONFIG: $SNAP_DATA/ansible.cfg
     #  DEFAULT_LOCAL_TMP: $SNAP_DATA/tmp
@@ -66,3 +67,46 @@ parts:
     build-packages:
       - gcc-multilib
       - g++-multilib
+
+
+  mosquitto:
+    after:
+      - lws
+    plugin: make
+    make-parameters: ["prefix=/usr", "WITH_WEBSOCKETS=yes", "WITH_ADNS=yes", "CFLAGS=-Wall -ggdb -O2 -I$SNAPCRAFT_STAGE -D_GNU_SOURCE"]
+    source: https://github.com/eclipse/mosquitto
+    source-type: git
+
+    build-packages:
+      - libssl-dev
+      - xsltproc
+      - docbook-xsl
+      - gcc
+      - g++
+    stage-packages:
+      - libssl1.0.0
+      - ca-certificates
+    prime:
+      - usr/sbin/mosquitto
+      - usr/bin/mosquitto_pub
+      - usr/bin/mosquitto_rr
+      - usr/bin/mosquitto_sub
+      - usr/bin/mosquitto_passwd
+      - usr/lib/libmosquitto.so*
+      - lib/*-linux-gnu/libcrypto.so*
+      - lib/*-linux-gnu/libssl.so*
+      - usr/include/mosquitto.h
+      - usr/include/mosquitto_broker.h
+      - usr/include/mosquitto_plugin.h
+
+  lws:
+    plugin: cmake
+    configflags: ["-DLWS_IPV6=ON", "-DLWS_WITHOUT_CLIENT=ON", "-DLWS_WITHOUT_EXTENSIONS=ON", "-DLWS_WITH_ZIP_FOPS=OFF", "-DLWS_WITH_ZLIB=OFF", "-DLWS_WITH_SHARED=OFF"]
+    source: https://github.com/warmcat/libwebsockets/archive/v2.4.2.tar.gz
+    source-type: tar
+    stage:
+      - include/libwebsockets.h
+      - include/lws_config.h
+      - lib/libwebsockets.a
+    prime: [-*]
+

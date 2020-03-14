@@ -14,8 +14,12 @@ export CONFIG_DIR=$SNAP_DATA/config
 export HOME=$SNAP_DATA
 export SSH_USERNAME_FILE="$CONFIG_DIR/ssh_username"
 export SSH_USERNAME=`[ -f $SSH_USERNAME_FILE ] && cat $SSH_USERNAME_FILE`
+
 export SECRET_CODE_FILE=$CONFIG_DIR/secret_code
+export SECRET_CODE=`[ -f $SECRET_CODE_FILE ] && cat $SECRET_CODE_FILE`
+
 export DEVICE_ID_FILE=$CONFIG_DIR/device_id
+export DEVICE_ID=`[ -f $DEVICE_ID_FILE ] && cat $DEVICE_ID_FILE`
 
 export DEBUG=`snapctl get debug`
 
