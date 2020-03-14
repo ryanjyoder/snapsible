@@ -12,11 +12,18 @@
 export DATA_DIR=$SNAP_DATA
 export CONFIG_DIR=$SNAP_DATA/config
 export HOME=$SNAP_DATA
-
-
 export SSH_USERNAME_FILE="$CONFIG_DIR/ssh_username"
 export SSH_USERNAME=`[ -f $SSH_USERNAME_FILE ] && cat $SSH_USERNAME_FILE`
+export SECRET_CODE_FILE=$CONFIG_DIR/secret_code
+export DEVICE_ID_FILE=$CONFIG_DIR/device_id
 
 export DEBUG=`snapctl get debug`
+
+MQTT_BROKER=`snapctl get mqtt-broker`
+if [ -z "$MQTT_BROKER" ]
+then
+    MQTT_BROKER="ec2-18-144-172-46.us-west-1.compute.amazonaws.com"
+fi
+export MQTT_BROKER
 
 exec "$@"
