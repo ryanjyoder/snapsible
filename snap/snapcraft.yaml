@@ -43,6 +43,18 @@ parts:
     organize:
       '*.sh' : bin/
 
+  snapsible:
+    plugin: go
+    source: .
+    override-build: |
+      cd cmd/snapsible/
+      go version
+      #go get
+      go build main.go
+      mkdir -p $SNAPCRAFT_PART_INSTALL/bin
+      cp snapsible $SNAPCRAFT_PART_INSTALL/bin
+
+
   logname:
     plugin: nil
     stage-packages: [coreutils]

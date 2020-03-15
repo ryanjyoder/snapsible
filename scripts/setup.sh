@@ -113,19 +113,34 @@ else
     exit 1
 fi
 
-device_id=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-secret=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-temp_secret_file="$SECRET_CODE_FILE.tmp"
-touch $temp_secret_file
-chmod 600 $temp_secret_file
-if [ "$?" != "0"]
+
+
+
+######################################
+## Create Device ID and Secret Code ##
+######################################
+
+if [ -z "$DEVICE_ID" ]
 then
-    echo "Couldn't chmod secret file"
-    exit 1
+    DEVICE_ID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+    echo "$device_id" > $DEVICE_ID_FILE
 fi
-echo "$secret" > $temp_secret_file
-mv $temp_secret_file $SECRET_CODE_FILE
-echo "$device_id" > $DEVICE_ID_FILE
+
+if [ -z "$SECRET_CODE" ]
+then
+    SECRET_CODE=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+    temp_secret_file="$SECRET_CODE_FILE.tmp"
+    touch $temp_secret_file
+    chmod 600 $temp_secret_file
+    if [ "$?" != "0" ]
+    then
+        echo "Couldn't chmod secret file"
+        exit 1
+    fi
+    echo "$secret" > $temp_secret_file
+    mv $temp_secret_file $SECRET_CODE_FILE
+
+fi
 
 secret_json=`printf '{"device-id":"%s", "secret":"%s", "mqtt-broker":"%s"}' $device_id $secret $MQTT_BROKER`
 echo -e "Your device secret code is:\n\t"

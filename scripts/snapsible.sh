@@ -17,7 +17,6 @@ fi
 ## Validate Environment Variables ##
 ####################################
 # Before starting we are going to override the ssh username
-SSH_USERNAME=`logname`
 required_envs="CONFIG_DIR:$CONFIG_DIR DATA_DIR:$DATA_DIR SSH_USERNAME:$SSH_USERNAME  SECRET_CODE:$SECRET_CODE DEVICE_ID:$DEVICE_ID MQTT_BROKER:$MQTT_BROKER" 
 for var in ${required_envs} ; do
     key=${var%%:*}
@@ -29,8 +28,7 @@ for var in ${required_envs} ; do
     fi
 done
 
-
-mosquitto.sub -t $DEVICE_ID -h $MQTT_BROKER
+snapsible
 
 ## testing
 exit 0
